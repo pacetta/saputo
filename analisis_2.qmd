@@ -1,0 +1,773 @@
+---
+title: "Informe sustentabilidad: Encuestas a productores de la empresa Saputo"
+format: docx
+editor: visual
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r, include = F}
+library(knitr)
+opts_chunk$set(echo = F, comment = NA, message = F, warning = F, fig.width = 15)
+#opts_knit$set(root.dir ="./data")
+```
+
+```{r}
+# DATOS
+pacman::p_load(rio, dplyr, ggplot2, stringr, tidyr, tables, car, grid, gridExtra, flextable, tidyverse, gt)
+#devtools::install_github('cttobin/ggthemr') 
+#https://www.shanelynn.ie/themes-and-colours-for-r-ggplots-with-ggthemr/
+#ggthemr::ggthemr("greyscale")
+pacman::p_load(RColorBrewer)
+#display.brewer.all()
+# Define a palette
+
+rojo_pastel <- "#CD5C5C"  # Rosa pastel
+amarillo_pastel <- "#FFF700"  # Amarillo pastel
+verde_pastel <- "#00FF7F"  # Verde pastel
+
+mypalette4 <- brewer.pal(n = 3, name = "Set2") #brewer.pal(4, "Greys")
+mypalette5 <- brewer.pal(n = 3, name = "Set2") #brewer.pal(5, "Greys")
+mypalette6 <- brewer.pal(n = 3, name = "Set2") #brewer.pal(6, "Greys")
+
+#theme_set(theme_grey())
+tema <- theme_grey() + theme(legend.position="bottom",
+                           plot.title = element_text(size = 15),
+                           axis.title.x = element_text(size = 20),
+                           axis.title.y = element_text(size = 15))
+
+# main title p + theme(plot.title = element_text(family, face, colour, size))
+# x axis title  p + theme(axis.title.x = element_text(family, face, colour, size))
+# y axis title p + theme(axis.title.y = element_text(family, face, colour, size))
+```
+
+```{r}
+datos <- import("respuestas2.xlsx") %>% 
+  filter(`1. ¿Cuál es su vínculo con la actividad lechera?` == "Propietario de la empresa") %>% 
+  mutate(`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` = factor(`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`, levels = c("Menos de 100 vacas en ordeño", "101 a 200", "201 a 300", "Más de 300 vacas en ordeño")))  %>% 
+  mutate( "Opinión" = as.factor(`5. Para Ud., la conservación del medio ambiente es:`),
+          "Edad" = as.factor(`2.  ¿En qué rango de edad se encuentra?` ),
+          "Tamaño" =  as.factor(`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`)
+          )
+         
+rep_str <- c("Menor a 25 años" = "Menor de 45 años","26 a 45" = "Menor de 45 años")
+datos$`2.  ¿En qué rango de edad se encuentra?` <- str_replace_all(datos$`2.  ¿En qué rango de edad se encuentra?`, rep_str)
+
+datos <- datos %>% 
+  mutate(`2.  ¿En qué rango de edad se encuentra?` = factor(`2.  ¿En qué rango de edad se encuentra?`,
+                                                            levels = c("Menor de 45 años", "46 a 65", "Mayor de 65 años")))
+
+datos1 <- pivot_longer(datos, cols = c(6:36), names_to = "pregunta")
+```
+
+# Descripción de los encuestados
+
+```{r, fig.width = 9}
+titulo1 <- "Edad de los encuestados"
+summary_edad <- datos1 %>% 
+  group_by(`2.  ¿En qué rango de edad se encuentra?` ) %>% 
+  count() %>%
+  arrange(desc(`2.  ¿En qué rango de edad se encuentra?` )) 
+
+
+options(digits=2)
+
+gedad <- datos1 %>% 
+  ggplot(.) +
+  aes(x = `2.  ¿En qué rango de edad se encuentra?`, 
+      y= ..count../sum(..count..)*100) +
+  geom_bar(stat='identity', position = 'dodge') +
+  labs (y= "%" , x = "Rango de Edad", title = titulo1,
+        caption = paste0("n = ", length(datos$`Marca temporal`)))  +
+  tema +   #geom_text(aes(label = ..count..), stat = "count", vjust = 1, hjust = -0.15)  +
+  coord_flip() +
+  geom_text(aes(x = `2.  ¿En qué rango de edad se encuentra?` , 
+                label=..count..),hjust=0.5, vjust=3, size=2,
+        position = position_dodge(width = 1)) +
+  scale_x_discrete(labels = function(x) str_wrap(x, 25))
+
+gedad <- summary_edad %>% 
+  ggplot(.) +
+  aes(x = "", y= n/sum(n)*100, 
+      fill=  `2.  ¿En qué rango de edad se encuentra?`) +
+  geom_bar(stat='identity') +    
+  labs (fill = "", caption = paste0("n = ", length(datos$`Marca temporal`)))  +
+  tema +  scale_fill_grey() +
+  coord_polar(theta="y") + theme_void()+
+  geom_text(aes(label= paste0(round(n/sum(n)*100), "%")),
+              position=position_stack(vjust=0.5),color="white",size=6)
+
+datos1 %>%
+  group_by(`2.  ¿En qué rango de edad se encuentra?`) %>%
+  summarise(Porcentaje = (n() / nrow(datos1)) * 100)
+```
+
+```{r, fig.width = 9}
+titulo2 <- "Tamaño del tambo, en cantidad de vacas ordeño"
+```
+
+### ´r titulo2´
+
+```{r, fig.width = 9}
+gtamaño <- datos1 %>% 
+  ggplot(.) +
+  aes(x = `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` , 
+      y=..count../sum(..count..)*100) +
+  geom_bar()  +  scale_color_brewer(palette='Grey') +
+  labs (y= "%" , x = "Tamaño: cantidad de vacas en ordeño", title = titulo2)  +
+  tema +  # geom_text(aes(label = ..count..), stat = "count", vjust = 1, hjust = -0.15)  +
+  coord_flip() +
+  scale_x_discrete(labels = function(x) str_wrap(x, 25))
+
+summary_tamaño <- datos1 %>% 
+  group_by(`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` ) %>% 
+  count() %>%
+  arrange(desc(`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` ))
+
+options(digits=2)
+
+gtamaño <- summary_tamaño %>% 
+  ggplot(.) +
+  aes(x = "", y= n/sum(n)*100, 
+      fill=  `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) +
+  geom_bar(stat='identity') +    
+  labs (fill = "", caption = paste0("n = ", length(datos$`Marca temporal`)))  +
+  tema +  scale_fill_grey() +
+  coord_polar(theta="y") + theme_void()+
+  geom_text(aes(label= paste0(round(n/sum(n)*100,1), "%")),
+              position=position_stack(vjust=0.5),color="white",size=6)
+
+
+datos1 %>%
+  group_by(`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) %>%
+  summarise(Porcentaje = round((n() / nrow(datos1)) * 100, 2))
+```
+
+```{r, fig.height= 9}
+titulo3 <- "Edad de los encuestados y tamaño de tambo"
+
+summary_edad_tamaño <- datos1 %>% 
+  group_by(`2.  ¿En qué rango de edad se encuentra?`,`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`  ) %>% 
+  count() %>%
+  arrange(desc(`2.  ¿En qué rango de edad se encuentra?` ))
+
+options(digits=2)
+
+gtamedad <- datos1 %>% 
+  ggplot(.) +
+  aes(x = `2.  ¿En qué rango de edad se encuentra?` , 
+      fill = `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`,
+      y=..count../sum(..count..)*100) +
+  geom_bar(position = 'dodge') +
+  labs (y= "%" , x = "Rango de Edad", title = titulo3, fill = "",
+        caption = paste0("n = ", length(datos$`Marca temporal`)))  +
+    tema +  geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+                     stat = "count", position = position_dodge(width = 0.9)) +
+  scale_x_discrete(labels = function(x) str_wrap(x, 25)) + 
+  scale_fill_grey()
+
+datos1 %>% 
+  ggplot(.) +
+  aes(x = `2.  ¿En qué rango de edad se encuentra?` , 
+      fill = `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`,
+      y=..count../sum(..count..)*100) +
+  geom_bar(position = 'dodge') +
+  labs (y= "%" , x = "Rango de Edad", fill = "")  +
+  tema + geom_text(aes(label = paste(round(..count../sum(..count..) * 100, 1), "%")),
+            stat = "count", position = position_dodge(width = 0.9),
+            vjust = -0.5) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, 25)) + 
+  scale_fill_grey()
+
+
+
+```
+
+```{r, fig.width = 9}
+titulo4 <- "Provincia en la que se localiza el establecimiento"
+
+summary_pcia <- datos %>% 
+  group_by(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?` ) %>% 
+  count() %>%
+  arrange(desc(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`  ))
+
+summary_pcia %>% 
+  ggplot(.) +
+  aes(x = reorder(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?` , -n ), y = n/sum(n)*100) +
+  geom_bar(stat="identity", position="dodge") +
+  labs (y= "%" , x = "Provincia", title = titulo4)  +
+  tema + 
+  #coord_flip() +
+  scale_x_discrete(labels = function(x) str_wrap(x, 15))
+
+
+datos1 %>%
+  group_by(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`) %>%
+  summarise(Porcentaje = round((n() / nrow(datos1)) * 100, 1))
+```
+
+```{r, fig.height= 6}
+titulo5_ <- "Provincia y tamaño de tambo"
+
+summary_edad_cia <- datos1 %>% 
+  group_by(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`,
+           `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) %>% 
+  count() %>%
+  arrange(desc(`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`))
+
+options(digits=2)
+
+datos1 %>% 
+    filter(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?` %in% c("Córdoba", "Buenos Aires", "Santa Fe")) %>% 
+  ggplot(.) +
+  aes(x = `3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`, 
+      fill = `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`,
+      y=..count../sum(..count..)*100) +
+  geom_bar(position = 'dodge') +
+  labs (y= "%" , x = "",  fill = "" # , title = titulo5_,
+        #,     caption = paste0("n = ", length(datos$`Marca temporal`))
+        )  +
+    tema + geom_text(aes(label = paste(round(..count../sum(..count..) * 100, 1), "%")),
+            stat = "count", position = position_dodge(width = 0.9),
+            vjust = -0.5) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, 25)) + 
+  scale_fill_grey()
+
+```
+
+```{r, fig.width = 9}
+gpcia <- summary_pcia %>% 
+  ggplot(.) +
+  aes(x = "", y= n/sum(n)*100, 
+      fill=  `3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?` ) +
+  geom_bar(stat='identity') +    
+  labs (fill = "", caption = paste0("n = ", length(datos$`Marca temporal`)))  +
+  tema +  scale_fill_grey() +
+  coord_polar(theta="y") + theme_void()+
+  geom_text(aes(label= paste0(round(n/sum(n)*100), "%")),
+              position=position_stack(vjust=0.5),color="white",size=6)
+```
+
+# Analisis encuesta a productores
+
+```{r}
+preg5 <- "5. Para Ud., la conservación del medio ambiente es:"
+titulo5 <- "Opinión sobre la conservación del medio ambiente"
+```
+
+# 5
+
+## `r preg5`
+
+```{r}
+datos5 <- datos %>% 
+  #pivot_longer(cols = 6 , names_to = "pregunta") %>% 
+  group_by(Opinión, Edad, Tamaño) %>% 
+  summarise(n = n()) 
+  
+```
+
+```{r}
+#Según edad:
+edad5 <-datos %>% 
+  filter(`2.  ¿En qué rango de edad se encuentra?` != "Menor a 25 años") %>% 
+  ggplot(.) +
+  aes(x = `5. Para Ud., la conservación del medio ambiente es:`, 
+      y = ..count../sum(..count..)*100) +
+  geom_bar() +
+  facet_grid(~ `2.  ¿En qué rango de edad se encuentra?`) +
+  labs (y= "%" , x = "Opinión") + 
+  tema + geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+                    stat = "count", position = position_dodge(width = 0.9), 
+                   vjust = 0, hjust = 0) +
+  coord_flip() +
+  scale_x_discrete(labels = function(x) str_wrap(x, 25))
+
+edad5
+
+ggsave("opinion por edad.png", plot = edad5, width = 8, height = 3, units = "in") 
+```
+
+```{r}
+#Según tamaño de tambo:
+
+tamaño5 <- ggplot(datos) +
+  aes(x = `5. Para Ud., la conservación del medio ambiente es:`, 
+      y = ..count../sum(..count..)*100) +
+  geom_bar() +
+  facet_grid(.~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) +
+  labs (y= "%" , x = "Opinión") + 
+  tema +   geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+                     stat = "count", position = position_dodge(width = 0.9), vjust = 0, hjust = 0) +
+  coord_flip() +
+  scale_x_discrete(labels = function(x) str_wrap(x, 25))
+
+ggsave("opinion por tamaño.png", plot = tamaño5, width = 8, height = 3, units = "in") 
+
+```
+
+```{r, fig.height= 9}
+#Según edad y tamaño de tambo:
+
+g5 <- ggplot(datos) +
+  aes(x = `5. Para Ud., la conservación del medio ambiente es:`, 
+      y =..count../sum(..count..)*100) +
+  geom_bar() +
+  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`, scales = "free") +
+  labs (y= "%" , x = "Opinión", title = titulo5) + 
+  tema +   geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+                     stat = "count", position = position_dodge(width = 0.9), vjust = 0, hjust = 0) +
+  coord_flip() +
+  scale_x_discrete(labels = function(x) str_wrap(x, 25))
+
+edad_tamaño_5 <- datos %>% 
+  group_by(`5. Para Ud., la conservación del medio ambiente es:`) %>% 
+  count()
+```
+
+```{r, fig.height= 9}
+edadtamaño5 <- edad_tamaño_5 %>% 
+  ggplot(.) +
+  aes(x = "", y= n/sum(n)*100, 
+      fill=  `5. Para Ud., la conservación del medio ambiente es:`) +
+#  geom_bar(position = "dodge") +    
+  geom_bar() +
+  labs ( fill = "", # title= titulo5 ,
+         caption = paste0("n = ", length(datos$`Marca temporal`)))  +
+  tema +  scale_fill_grey() +
+#  coord_polar(theta="y") + 
+  theme_void()+ coord_flip() +
+  geom_text(aes(label= paste0(round(n/sum(n)*100), "%")),
+              position=position_stack(vjust=0.5),color="white",size=8)
+
+```
+
+Test Chi² *(observaciones \< 5)*
+
+```{r}
+# prueba chi
+datos5 %>% 
+  filter(Opinión %in% c("Un problema futuro que requiere solución", 
+                        "Un problema inmediato y urgente a resolver")) %>% 
+  group_by(Opinión) %>% 
+  summarise(test_result = chisq.test(Edad,Tamaño)$p.value)
+
+datos5_chi <- datos5 %>% 
+  filter(Opinión %in% c("Un problema futuro que requiere solución")) 
+
+obs <- xtabs(n ~Edad + Tamaño, datos5_chi)
+chisq.test(datos5$Edad,datos5$Tamaño)$expected
+```
+
+# 6
+
+```{r}
+preg6 <- "6. ¿Considera necesario estar informado en los siguientes temas para favorecer la sustentabilidad de su empresa?"
+titulo6 <- "Necesidad de  estar informado en los siguientes temas de sustentabilidad de su empresa"
+```
+
+## `r preg6`
+
+```{r, fig.height= 6}
+datos6 <- pivot_longer(datos, cols = c(7:11), names_to = "pregunta")  
+
+g6<- ggplot(datos6) +
+  aes(x = pregunta, fill = value, y = ..count../sum(..count..)*100) +
+  geom_bar() +
+  facet_grid(.~ `2.  ¿En qué rango de edad se encuentra?`, scales = "free") +
+  labs(y = "%" , fill = "", x = "Temas", title = titulo6) + 
+tema +   geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+                     stat = "count", vjust = 0, hjust = 0) +
+  coord_flip() +  scale_x_discrete(labels = function(x) str_wrap(x, 25)) 
+
+g6_2 <- datos6 %>% 
+  filter(`2.  ¿En qué rango de edad se encuentra?` %in% c("26 a 45","46 a 65")) %>% 
+  ggplot(.) +
+  aes(x = pregunta, fill = value, y = ..count../sum(..count..)*100) +
+  geom_bar() +
+  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`,scales = "free") +
+  labs(y = "%" , fill = "", x = "Temas", title = titulo6) + 
+  tema +
+  coord_flip() +  scale_x_discrete(labels = function(x) str_wrap(x, 25)) +
+  scale_fill_grey()
+
+datos6[35:36] %>% 
+  group_by(pregunta, value) %>% 
+  count() %>% 
+  ggplot(.) +
+  aes(x = pregunta, fill = value, y = n/sum(n)*100) +
+  geom_col(position = "fill") +
+  labs(y = "" , fill = "", x = "Temas", title = titulo6) + 
+  tema +   scale_fill_grey()+ coord_flip() +  
+  scale_y_continuous(labels = scales::percent)  +
+  scale_x_discrete(labels = function(x) str_wrap(x, 25)) 
+
+
+
+datos6[35:36] %>% 
+  filter(value == "Si") %>% 
+  group_by(pregunta) %>% 
+  summarise("%" = n() / nrow(datos6[35:36]) * 100*5)
+```
+
+# 7
+
+```{r}
+preg7 <- "7. Según su percepción, ¿qué nivel de impacto sobre la sustentabilidad de la actividad lechera le adjudica a las siguientes situaciones?\n Respuestas posibles: alto, medio, bajo"
+titulo7 <- "Percepción: nivel de impacto sobre la sustentabilidad de la actividad lechera a diferentes situaciones"
+```
+
+## `r preg7`
+
+```{r, fig.height= 9}
+datos7 <- pivot_longer(datos, cols = c(12:20), names_to = "pregunta") %>% 
+  mutate(value = factor(value, levels = c("Alto","Medio","Bajo"))) 
+
+
+g7_sacar <-ggplot(datos7) +
+  aes(x = pregunta, fill = value, y = ..count../sum(..count..)*100) +
+  geom_bar() +
+  facet_grid(.~ `2.  ¿En qué rango de edad se encuentra?`, scales = "free") +
+  labs(y = "%" , fill = "", x = "Percepción", title = titulo7) + 
+tema +   geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+                     stat = "count", vjust = 0, hjust = 0) +
+  coord_flip() +  scale_x_discrete(labels = function(x) str_wrap(x, 25))
+
+g7_sacar <- ggplot(datos7) +
+  aes(x = pregunta, fill = value, y = ..count../sum(..count..)*100) +
+  geom_bar(position = "dodge", stat = "count") +
+  facet_grid(.~ `2.  ¿En qué rango de edad se encuentra?`, scales = "free") +
+  labs(y = "%" , fill = "", x = "Percepción", title = titulo7) + 
+  tema +   
+  geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+            stat = "count", vjust = 0, hjust = 0, position = position_dodge(0.9)) +
+  scale_x_discrete(labels = function(x) str_wrap(x, 25)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Test Chi² *(observaciones \< 5)*
+
+```{r}
+# prueba chi
+datos7 %>% 
+  group_by(pregunta,value, Edad, Tamaño) %>% 
+  summarise(n=n()) %>% 
+  group_by(pregunta) %>% 
+  summarise(test_result = chisq.test(Edad,Tamaño)$p.value)
+```
+
+```{r, fig.height= 6}
+percepcion <- datos7 %>% 
+ # filter(`2.  ¿En qué rango de edad se encuentra?` %in% c("26 a 45","46 a 65")) %>% 
+  group_by(pregunta, value) %>% 
+  count() %>% 
+  ggplot(.) +
+  aes(x = pregunta, fill = value, y = n/sum(n)*100) +
+  geom_col(position = "fill") +
+#  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) +
+  labs(y = "" , fill = "", x = "Percepción", title = titulo7) + 
+  tema +   #geom_text(aes(label = n), stat = "count", vjust = 0, hjust = 0) +
+  scale_y_continuous(labels = scales::percent)  +
+    scale_fill_manual(values = c(verde_pastel,amarillo_pastel,rojo_pastel)) +
+  coord_flip() +  scale_x_discrete(labels = function(x) str_wrap(x, 25))
+
+ggsave("percepcion.png", percepcion)
+```
+
+# 8
+
+```{r}
+preg8 <- "8. Considerando las situaciones arriba listadas, ¿podría ordenar de acuerdo a su importancia las 5 situaciones más urgentes de corregir en su empresa? "
+titulo8 <- "Situaciones más urgente a corregir en la empresa"
+```
+
+## `r preg8`
+
+Seleccionaron 5 de 9 opciones
+
+```{r, fig.width= 6}
+datos8 <- pivot_longer(datos, cols = c(21:25), names_to = "pregunta") %>% 
+  mutate(pregunta = str_remove(pregunta, " situación seleccionada"),
+         "Percepción" = as.factor(value)) %>% 
+  group_by(Percepción) %>% 
+  count() %>% 
+  summarise("%" = round(n/nrow(datos)*100,2))
+# https://towardsdatascience.com/top-7-packages-for-making-beautiful-tables-in-r-7683d054e541
+# https://cran.r-project.org/web/packages/flextable/index.html
+flextable::flextable(datos8)
+```
+
+# 9
+
+```{r}
+preg9 <- "9. Acerca de su establecimiento lechero o de los que asesora, ¿qué aspectos y/o manejos realiza actualmente?\n\nRespuestas posibles: si, parcial, no \n(Si no visualiza estas opciones, desplazar la pantalla lateralmente)"
+titulo9 <- "Aspectos y/o manejos realiza actualmente en el establecimiento lechero"
+```
+
+## `r preg9`
+
+```{r, fig.height= 9}
+datos9 <- pivot_longer(datos, cols = c(26:33), names_to = "pregunta") 
+
+g9<- ggplot(datos9) +
+  aes(x = pregunta, fill = value, y = ..count..) +
+  geom_bar() +
+  facet_grid(.~ `2.  ¿En qué rango de edad se encuentra?`,scales = "free") +
+  labs(y = "N° respuestas" , fill = "", x = "Percepción", title = titulo9) + 
+tema +   geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+                     stat = "count", vjust = 0, hjust = 0) +
+  coord_flip() +  scale_x_discrete(labels = function(x) str_wrap(x, 25)) 
+
+g9 <- datos9 %>% 
+  filter(`2.  ¿En qué rango de edad se encuentra?` %in% c("26 a 45","46 a 65")) %>% 
+  ggplot(.) +
+  aes(x = pregunta, fill = value, y = ..count../sum(..count..)*100) +
+  geom_bar() +
+  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`, scales = "free") +
+  labs(y = "%" , fill = "", x = "Percepción", title = titulo9) + 
+tema +   #geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+          #           stat = "count", vjust = 0, hjust = 0) +
+  coord_flip() +  scale_x_discrete(labels = function(x) str_wrap(x, 25)) + 
+  scale_fill_grey()
+
+
+aspectos <- datos9 %>% 
+  group_by(pregunta, value) %>% 
+  count() %>% 
+  ggplot(.) +
+  aes(x = pregunta, fill = value, y = n/sum(n)*100) +
+  geom_col(position = "fill") +
+#  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) +
+  labs(y = "" , fill = "", x = "") + 
+  tema +   #geom_text(aes(label = n), stat = "count", vjust = 0, hjust = 0) +
+  scale_y_continuous(labels = scales::percent)  +
+  scale_fill_manual(values = c(rojo_pastel, amarillo_pastel, verde_pastel)) +
+  coord_flip() +
+  scale_x_discrete(labels = function(x) str_wrap(x, 25)) 
+#+  scale_fill_grey()
+
+ggsave("aspectos.png", aspectos)
+
+```
+
+Test Chi² *(observaciones \< 5)*
+
+```{r}
+# prueba chi
+datos9 %>% 
+  group_by(pregunta,value, Edad, Tamaño) %>% 
+  summarise(n=n()) %>% 
+  group_by(pregunta) %>% 
+  summarise(test_result = chisq.test(Edad,Tamaño)$p.value)
+
+datos9 %>% 
+  group_by(pregunta,value, Edad) %>% 
+  summarise(n=n()) %>% 
+  group_by(Edad) %>% 
+  summarise(test_result = chisq.test(pregunta,value)$p.value)
+```
+
+# Análisis 5 a 9 por Provincia
+
+```{r}
+datos_pcia <- datos %>% 
+  mutate(PCIAS = as.factor(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`) %>% 
+    filter(PCIAS == c("Córdoba", "Buenos Aires", "Santa Fe"))
+```
+
+Según edad, tamaño de tambo y provincia:
+
+### `r preg5`
+
+```{r, fig.height= 9}
+gpcia <- datos_pcia %>% 
+  ggplot(.) +
+  aes(x = `5. Para Ud., la conservación del medio ambiente es:`, 
+      y =..count../sum(..count..)*100) +
+  geom_bar() +
+  facet_grid( `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` ~ PCIAS + `2.  ¿En qué rango de edad se encuentra?`, scales = "free") +
+  labs (y= "%" , x = "Opinión", title = titulo5) + 
+tema +   geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+                     stat = "count", vjust = 0, hjust = 0) +
+  coord_flip() +  scale_x_discrete(labels = function(x) str_wrap(x, 25))
+```
+
+### `r preg6`
+
+```{r, fig.height=6}
+datos6_g <- datos6 %>% 
+  mutate(PCIAS = as.factor(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`) %>% 
+  group_by(`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` ,
+           `2.  ¿En qué rango de edad se encuentra?`,
+           PCIAS,
+           pregunta) %>% 
+  count()
+
+datos6 <- datos6 %>% 
+  mutate(PCIAS = as.factor(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`))
+         
+graf <- datos6 %>% 
+  filter(`2.  ¿En qué rango de edad se encuentra?` %in% c("26 a 45","46 a 65")) %>% 
+  filter(PCIAS %in% c("Córdoba", "Buenos Aires", "Santa Fe")) %>%
+  group_by(PCIAS ) %>% 
+  nest() %>% 
+  mutate(plot = map(data, ~ ggplot(.x) +
+  aes(x = pregunta, fill = value, y = ..count../sum(..count..)*100) +
+  geom_bar() +
+  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`, scales = "free") +
+  labs(y = "%" , fill = "", x = "Percepción", 
+       title = paste0(titulo6,"\n Provincia de " , PCIAS)) + 
+    tema +
+    coord_flip() +  scale_fill_grey() + scale_x_discrete(labels = function(x) str_wrap(x, 20)) ))
+
+graf$plot
+```
+
+### `r preg7`
+
+```{r, fig.height= 12}
+datos7g <- datos7 %>% 
+  group_by(`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` ,
+           `2.  ¿En qué rango de edad se encuentra?`,
+           `3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`,
+           pregunta) %>% 
+  count()
+
+graf <- datos7 %>% 
+  filter(`2.  ¿En qué rango de edad se encuentra?` %in% c("26 a 45","46 a 65")) %>% 
+  filter(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?` %in% c("Córdoba", "Buenos Aires", "Santa Fe")) %>%
+  group_by(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`  ) %>% 
+  nest() %>% 
+  mutate(plot = map(data, ~ ggplot(.x) +
+  aes(x = pregunta, fill = value, y = ..count../sum(..count..)*100) +
+  geom_bar() +
+  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`, scales = "free") +
+  labs(y = "%" , fill = "", x = "Percepción", 
+       title = paste0(titulo7,"\n Provincia de " , `3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`)) + 
+tema +   #geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+          #           stat = "count", vjust = 0, hjust = 0) +
+  coord_flip() +  scale_fill_grey() + scale_x_discrete(labels = function(x) str_wrap(x, 30)) ))
+
+graf$plot
+```
+
+### `r preg8`
+
+```{r,  fig.height= 9}
+datos8_ <- pivot_longer(datos, cols = c(21:25), names_to = "pregunta") %>% 
+  mutate(pregunta = str_remove(pregunta, " situación seleccionada")) 
+
+graf <- datos8_ %>% 
+  filter(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?` %in% c("Córdoba", "Buenos Aires", "Santa Fe")) %>%
+    filter(`2.  ¿En qué rango de edad se encuentra?` %in% c("26 a 45","46 a 65")) %>% 
+  group_by(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`  ) %>% 
+  nest() %>% 
+  mutate(plot = map(data, ~ ggplot(.x) +
+  aes(x = value, y = ..count../sum(..count..)*100) +
+  geom_bar() +
+  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`, scales = "free") +
+  labs(y = "%" , fill = "", x = "Situación", 
+       title = paste0(titulo8,"\n Provincia de " , `3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`)) + 
+tema +   #geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+          #           stat = "count", vjust = 0, hjust = 0) +
+  coord_flip() +  scale_x_discrete(labels = function(x) str_wrap(x, 30)) ))
+
+graf$plot
+```
+
+### `r preg9`
+
+```{r, fig.height= 9}
+graf <- datos9 %>% 
+  filter(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?` == c("Córdoba", "Buenos Aires", "Santa Fe")) %>%
+  filter(`2.  ¿En qué rango de edad se encuentra?` %in% c("26 a 45","46 a 65")) %>% 
+  group_by(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`  ) %>% 
+  nest() %>% 
+  mutate(plot = map(data, ~ ggplot(.x) +
+  aes(x = pregunta, fill = value, y = ..count..) +
+  geom_bar() +
+  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`, scales = "free") +
+  labs(y = "N° respuestas" , fill = "", x = "Percepción", 
+       title = paste0(titulo9,"\n Provincia de " , `3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`)) + 
+    tema +   #geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+              #       stat = "count", vjust = 0, hjust = 0) +
+  coord_flip() + scale_fill_grey() +
+    scale_x_discrete(labels = function(x) str_wrap(x, 30)) )) 
+
+graf$plot
+```
+
+# 10
+
+```{r}
+preg10 <- "10. ¿Estaría dispuesto a recibir capacitación sobre la problemática ambiental y social, y sobre las acciones de mitigación que pueden implementarse tranqueras adentro?"
+titulo10 <- "Interés en recibir capacitaciones sobre la problemática ambiental y social"
+```
+
+## `r preg10`
+
+```{r, fig.height= 9}
+datos10 <- pivot_longer(datos, cols = c(34), names_to = "pregunta") %>% 
+  mutate(value = factor(value, levels = c("Si", "Depende", "No")))
+pct_format = scales::percent_format(accuracy = .1)
+
+ggplot(datos10) +
+  aes(fill = value, x = pregunta, 
+      y = ..count../sum(..count..)*100) +
+  geom_bar(position = "dodge") +
+  facet_grid(.~ `2.  ¿En qué rango de edad se encuentra?`) +
+  labs(y = "%" , fill = "", x = "", title = titulo10) + 
+  tema + theme(axis.text.x =  element_blank())+
+  #geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+   #                  stat = "count", vjust = 0, hjust = 0)+
+  scale_fill_grey()
+```
+
+```{r, fig.height= 6}
+g10 <- ggplot(datos10) +
+  aes(fill = value, x = pregunta, 
+      y = ..count../sum(..count..)*100) +
+  geom_bar(position = "dodge") +
+  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ ~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) +
+  labs(y = "%" , fill = "", x = "", title = titulo10) + 
+  tema + theme(axis.text.x =  element_blank())+
+  geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+                     stat = "count", vjust = 0, hjust = 0)
+
+graf <- datos10 %>% 
+  filter(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?` == c("Córdoba", "Buenos Aires", "Santa Fe")) %>%
+    filter(`2.  ¿En qué rango de edad se encuentra?` %in% c("26 a 45","46 a 65")) %>% 
+  group_by(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`  ) %>% 
+  nest() %>% 
+  mutate(plot = map(data, ~ ggplot(.x) +
+  aes(fill = value, x = pregunta, 
+      y = ..count../sum(..count..)*100) +
+  geom_bar() +
+  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) +
+  labs(y = "%" , fill = "", x = "", 
+       title = paste0(titulo10,"\n Provincia de " , `3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`)) + 
+    tema + theme(axis.text.y =  element_blank()) +  coord_flip() +
+ # geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
+  #                   stat = "count", vjust = 0, hjust = 0)+
+    scale_fill_grey() +   scale_x_discrete(labels = function(x) str_wrap(x, 25)) ))
+
+graf$plot
+```
+
+# 10. a) Si en la pregunta anterior seleccionó "no" o "depende", ¿podría indicar las razones?
+
+```{r}
+razones <- datos %>% 
+  filter(`10. a) Si en la pregunta anterior seleccionó "no" o "depende", ¿podría indicar las razones?` != "NA")
+
+cat(razones$`10. a) Si en la pregunta anterior seleccionó "no" o "depende", ¿podría indicar las razones?`, sep = " \n")
+```
+
+# 11. "Si desea dejar algún comentario y/o sugerencia sobre esta temática (sustentabilidad), lo invitamos a usar este espacio"
+
+```{r}
+comentarios <- datos %>% 
+  filter(`Si desea dejar algún comentario y/o sugerencia sobre esta temática (sustentabilidad), lo invitamos a usar este espacio` != "NA")
+
+cat(comentarios$`Si desea dejar algún comentario y/o sugerencia sobre esta temática (sustentabilidad), lo invitamos a usar este espacio`, sep = " \n")
+```
