@@ -14,7 +14,7 @@ opts_chunk$set(echo = F, comment = NA, message = F, warning = F, fig.width = 15)
 
 ```{r}
 # DATOS
-pacman::p_load(rio, dplyr, ggplot2, stringr, tidyr, tables, car, grid, gridExtra, flextable, tidyverse, gt)
+pacman::p_load(rio, dplyr, ggplot2, stringr, tidyr, tables, car, grid, gridExtra, flextable, tidyverse) #gt)
 #devtools::install_github('cttobin/ggthemr') 
 #https://www.shanelynn.ie/themes-and-colours-for-r-ggplots-with-ggthemr/
 #ggthemr::ggthemr("greyscale")
@@ -94,8 +94,9 @@ gedad <- summary_edad %>%
   labs (fill = "", caption = paste0("n = ", length(datos$`Marca temporal`)))  +
   tema +  scale_fill_grey() +
   coord_polar(theta="y") + theme_void()+
-  geom_text(aes(label= paste0(round(n/sum(n)*100), "%")),
-              position=position_stack(vjust=0.5),color="white",size=6)
+  geom_text(aes(label= paste0(round(n/sum(n)*100), "%"), 
+                scales::percent(Prozent/100,decimal.mark = ","),
+                position=position_stack(vjust=0.5),color="white",size=6)
 
 datos1 %>%
   group_by(`2.  ¿En qué rango de edad se encuentra?`) %>%
@@ -227,11 +228,34 @@ datos1 %>%
   labs (y= "%" , x = "",  fill = "" # , title = titulo5_,
         #,     caption = paste0("n = ", length(datos$`Marca temporal`))
         )  +
-    tema + geom_text(aes(label = paste(round(..count../sum(..count..) * 100, 1), "%")),
-            stat = "count", position = position_dodge(width = 0.9),
-            vjust = -0.5) + 
+    tema + 
+    geom_text(aes(label = paste0(format(round(..count../sum(..count..) * 100, 1),decimal.mark = ",", scientific = FALSE), "%")),
+            stat = "count", 
+            position = position_dodge(width = 0.9),
+            vjust = -0.5,
+            family = "Arial",
+            size = 3) +
   scale_x_discrete(labels = function(x) str_wrap(x, 25)) + 
   scale_fill_grey()
+
+
+datos1 %>%
+  filter(`3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?` %in% c("Córdoba", "Buenos Aires", "Santa Fe")) %>%
+  ggplot() +
+  aes(x = `3. ¿Podría seleccionar en qué provincia se localiza el establecimiento lechero?`, 
+      fill = `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) +
+  geom_bar(position = 'dodge') +
+  labs(y = "%", x = "", fill = "") +
+  theme_minimal() +
+  geom_text(aes(label = paste0(format(round(..count../sum(..count..) * 100, 1),decimal.mark = ",", scientific = FALSE), "%")),
+            stat = "count", 
+            position = position_dodge(width = 0.9),
+            vjust = -0.5,
+            family = "Arial",
+            size = 3) +
+  scale_x_discrete(labels = function(x) str_wrap(x, 25)) +
+  scale_fill_grey() +
+  scale_y_continuous()
 
 ```
 
@@ -278,10 +302,13 @@ edad5 <-datos %>%
   facet_grid(~ `2.  ¿En qué rango de edad se encuentra?`) +
   labs (y= "%" , x = "Opinión") + 
   tema + geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
-                    stat = "count", position = position_dodge(width = 0.9), 
-                   vjust = 0, hjust = 0) +
+                    stat = "count", position = position_dodge(width = 0.7), 
+                   vjust = 0, hjust = 0, size = 3) +
   coord_flip() +
-  scale_x_discrete(labels = function(x) str_wrap(x, 25))
+  scale_x_discrete(labels = function(x) str_wrap(x, 25))+
+  scale_y_continuous(limits = c(0, 35))+
+    theme(text = element_text(size = 10),
+          axis.text = element_text(size = 10))  # Cambia el tamaño del texto aquí
 
 edad5
 
@@ -291,16 +318,25 @@ ggsave("opinion por edad.png", plot = edad5, width = 8, height = 3, units = "in"
 ```{r}
 #Según tamaño de tambo:
 
+datos$`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` = stringr::str_wrap(datos$`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`, 20)
+
 tamaño5 <- ggplot(datos) +
   aes(x = `5. Para Ud., la conservación del medio ambiente es:`, 
       y = ..count../sum(..count..)*100) +
   geom_bar() +
   facet_grid(.~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) +
-  labs (y= "%" , x = "Opinión") + 
-  tema +   geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
-                     stat = "count", position = position_dodge(width = 0.9), vjust = 0, hjust = 0) +
+  labs(y = "%", x = "Opinión") + 
+  tema + 
+  geom_text(aes(label = paste(round(..count../sum(..count..)*100, 1), "%")), 
+            stat = "count", position = position_dodge(width = 0.7), 
+            vjust = 0, hjust = 0, size = 3) +
   coord_flip() +
-  scale_x_discrete(labels = function(x) str_wrap(x, 25))
+  scale_x_discrete(labels = function(x) str_wrap(x, 25)) +
+  scale_y_continuous(limits = c(0, 35)) +
+  theme(text = element_text(size = 10),
+        axis.text = element_text(size = 10),
+        strip.text.y = element_text(size = 10))  # Cambia el tamaño del texto aquí
+tamaño5
 
 ggsave("opinion por tamaño.png", plot = tamaño5, width = 8, height = 3, units = "in") 
 
