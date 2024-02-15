@@ -58,6 +58,7 @@ datos <- datos %>%
                                                             levels = c("Menor de 45 años", "46 a 65", "Mayor de 65 años")))
 
 datos1 <- pivot_longer(datos, cols = c(6:36), names_to = "pregunta")
+
 ```
 
 # Descripción de los encuestados
@@ -318,7 +319,11 @@ ggsave("opinion por edad.png", plot = edad5, width = 8, height = 3, units = "in"
 ```{r}
 #Según tamaño de tambo:
 
-datos$`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` = stringr::str_wrap(datos$`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`, 20)
+datos$`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` <- fct_recode(datos$`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` ,
+                           "menos de 100" = "Menos de 100 vacas en ordeño",
+                           "101 a 200" = "101 a 200",
+                           "201 a 300" = "201 a 300",
+                           "más de 300" = "Más de 300 vacas en ordeño")
 
 tamaño5 <- ggplot(datos) +
   aes(x = `5. Para Ud., la conservación del medio ambiente es:`, 
@@ -335,7 +340,8 @@ tamaño5 <- ggplot(datos) +
   scale_y_continuous(limits = c(0, 35)) +
   theme(text = element_text(size = 10),
         axis.text = element_text(size = 10),
-        strip.text.y = element_text(size = 10))  # Cambia el tamaño del texto aquí
+        strip.text.y = element_text(size = 10))
+
 tamaño5
 
 ggsave("opinion por tamaño.png", plot = tamaño5, width = 8, height = 3, units = "in") 
@@ -493,21 +499,66 @@ datos7 %>%
 ```
 
 ```{r, fig.height= 6}
-percepcion <- datos7 %>% 
- # filter(`2.  ¿En qué rango de edad se encuentra?` %in% c("26 a 45","46 a 65")) %>% 
-  group_by(pregunta, value) %>% 
-  count() %>% 
+datos7a <- datos7 %>%
+  filter(value == "Alto") %>% 
+  group_by(pregunta, value) %>%
+  count() %>%
+  arrange((ifelse(value == "Alto", n, 0)))  # Ordenar los datos según el recuento de "Alto"
+ 
+datos7b <- datos7 %>% 
+    mutate(pregunta = factor(pregunta, levels = unique(datos7a$pregunta))) 
+  # Ajustar el orden de las preguntas según el recuento de "Alto"
+levels(datos7b$pregunta)
+
+percepcion <- datos7b %>% 
+  group_by(pregunta, value) %>%
+  count() %>%
   ggplot(.) +
-  aes(x = pregunta, fill = value, y = n/sum(n)*100) +
-  geom_col(position = "fill") +
-#  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) +
-  labs(y = "" , fill = "", x = "Percepción", title = titulo7) + 
-  tema +   #geom_text(aes(label = n), stat = "count", vjust = 0, hjust = 0) +
+  aes(x = reorder(pregunta, -n), fill = value, y = n) +
+  geom_col(position = position_fill(reverse = TRUE)) +  # Mantener las barras apiladas
+  labs(y = "", fill = "", x = "") + 
+  tema +  
   scale_y_continuous(labels = scales::percent)  +
-    scale_fill_manual(values = c(verde_pastel,amarillo_pastel,rojo_pastel)) +
-  coord_flip() +  scale_x_discrete(labels = function(x) str_wrap(x, 25))
+  scale_fill_manual(values = c(rojo_pastel, amarillo_pastel, verde_pastel)) +
+  coord_flip() +  
+  scale_x_discrete(labels = function(x) str_wrap(x, 25))
+
 
 ggsave("percepcion.png", percepcion)
+```
+
+Idem separado por mas y menos de 200
+
+```{r}
+datos7c <- datos7b %>%
+  mutate(tamaño2 = case_when(
+    `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` %in% c("menos de 100", "101 a 200") ~ "menos de 200 vacas en ordeñe",
+    `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` %in% c("201 a 300", "más de 300") ~ "mas de 200 vacas en ordeñe"),
+    tamaño2 = factor(tamaño2, levels = c("menos de 200 vacas en ordeñe", "mas de 200 vacas en ordeñe")))
+
+datos7c <- datos7c %>% 
+    mutate(pregunta = factor(pregunta, levels = unique(datos7a$pregunta))) 
+
+levels(datos7c$pregunta)
+
+percep_tamaño<- datos7c %>% 
+  group_by(pregunta, value, tamaño2) %>%
+  count() %>%
+  ggplot(.) +
+  aes(x = reorder(pregunta, n), fill = value, y = n) +
+  geom_col(position = position_fill(reverse = TRUE)) +  
+  labs(y = "", fill = "", x = "") + 
+  tema +  
+  scale_y_continuous(labels = scales::percent)  +
+  scale_fill_manual(values = c(rojo_pastel, amarillo_pastel, verde_pastel)) +
+  coord_flip() +  
+  scale_x_discrete(labels = function(x) str_wrap(x, 25)) +
+  facet_grid(. ~ tamaño2)
+
+percep_tamaño
+
+ggsave("percepcion-tamaño.png", percep_tamaño, width = 7, height = 7, units = "in")
+
 ```
 
 # 8
@@ -549,7 +600,7 @@ g9<- ggplot(datos9) +
   aes(x = pregunta, fill = value, y = ..count..) +
   geom_bar() +
   facet_grid(.~ `2.  ¿En qué rango de edad se encuentra?`,scales = "free") +
-  labs(y = "N° respuestas" , fill = "", x = "Percepción", title = titulo9) + 
+  labs(y = "N° respuestas" , fill = "", x = "Manejos", title = titulo9) + 
 tema +   geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
                      stat = "count", vjust = 0, hjust = 0) +
   coord_flip() +  scale_x_discrete(labels = function(x) str_wrap(x, 25)) 
@@ -560,19 +611,31 @@ g9 <- datos9 %>%
   aes(x = pregunta, fill = value, y = ..count../sum(..count..)*100) +
   geom_bar() +
   facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`, scales = "free") +
-  labs(y = "%" , fill = "", x = "Percepción", title = titulo9) + 
+  labs(y = "%" , fill = "", x = "Manejos", title = titulo9) + 
 tema +   #geom_text(aes(label = paste(round(..count../sum(..count..)*100,1),"%")), 
           #           stat = "count", vjust = 0, hjust = 0) +
   coord_flip() +  scale_x_discrete(labels = function(x) str_wrap(x, 25)) + 
   scale_fill_grey()
 
 
-aspectos <- datos9 %>% 
+datos9a <- datos9 %>%
+  filter(value == "Si") %>% 
+  group_by(pregunta, value) %>%
+  count() %>%
+  arrange((ifelse(value == "Si", n, 0)))  # Ordenar los datos según el recuento de "Alto"
+ 
+datos9b <- datos9 %>% 
+    mutate(pregunta = factor(pregunta, levels = unique(datos9a$pregunta))) 
+
+levels(datos9b$pregunta)
+
+
+aspectos <- datos9b %>% 
   group_by(pregunta, value) %>% 
   count() %>% 
   ggplot(.) +
-  aes(x = pregunta, fill = value, y = n/sum(n)*100) +
-  geom_col(position = "fill") +
+  aes(x = reorder(pregunta, n), fill = value, y = n/sum(n)*100) +
+  geom_col(position = position_fill(reverse = FALSE)) +  # Mantener las barras apiladas
 #  facet_grid(`2.  ¿En qué rango de edad se encuentra?`~ `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) +
   labs(y = "" , fill = "", x = "") + 
   tema +   #geom_text(aes(label = n), stat = "count", vjust = 0, hjust = 0) +
@@ -582,9 +645,44 @@ aspectos <- datos9 %>%
   scale_x_discrete(labels = function(x) str_wrap(x, 25)) 
 #+  scale_fill_grey()
 
+aspectos
+
 ggsave("aspectos.png", aspectos)
 
 ```
+Seprarando en tambos menor y mayor a 200
+
+```{r}
+datos9c <- datos9 %>%
+  mutate(tamaño2 = case_when(
+    `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` %in% c("menos de 100", "101 a 200") ~ "menos de 200 vacas en ordeñe",
+    `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` %in% c("201 a 300", "más de 300") ~ "mas de 200 vacas en ordeñe"),
+    tamaño2 = factor(tamaño2, levels = c("menos de 200 vacas en ordeñe", "mas de 200 vacas en ordeñe")))
+
+datos9c <- datos9c %>% 
+    mutate(pregunta = factor(pregunta, levels = unique(datos9a$pregunta))) 
+
+levels(datos9c$tamaño2)
+
+levels(datos9b$pregunta)
+
+asp_tamaño<- datos9c %>% 
+  group_by(pregunta, value, tamaño2) %>%
+  count() %>%
+  ggplot(.) +
+  aes(x = reorder(pregunta, n), fill = value, y = n) +
+  geom_col(position = position_fill(reverse = FALSE)) +  # Mantener las barras apiladas
+  labs(y = "", fill = "", x = "") + 
+  tema +  
+  scale_y_continuous(labels = scales::percent)  +
+  scale_fill_manual(values = c(rojo_pastel, amarillo_pastel, verde_pastel)) +
+  coord_flip() +  
+  scale_x_discrete(labels = function(x) str_wrap(x, 25)) +
+  facet_grid(. ~ tamaño2)
+
+ggsave("asp-tamaño.png", asp_tamaño, width = 8, units = "in")
+```
+
 
 Test Chi² *(observaciones \< 5)*
 
@@ -654,7 +752,8 @@ graf <- datos6 %>%
   labs(y = "%" , fill = "", x = "Percepción", 
        title = paste0(titulo6,"\n Provincia de " , PCIAS)) + 
     tema +
-    coord_flip() +  scale_fill_grey() + scale_x_discrete(labels = function(x) str_wrap(x, 20)) ))
+    coord_flip() +  scale_fill_grey() + 
+    scale_x_discrete(labels = function(x) str_wrap(x, 20)) ))
 
 graf$plot
 ```
