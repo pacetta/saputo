@@ -86,18 +86,18 @@ gedad <- datos1 %>%
                 label=..count..),hjust=0.5, vjust=3, size=2,
         position = position_dodge(width = 1)) +
   scale_x_discrete(labels = function(x) str_wrap(x, 25))
-
-gedad <- summary_edad %>% 
-  ggplot(.) +
-  aes(x = "", y= n/sum(n)*100, 
-      fill=  `2.  ¿En qué rango de edad se encuentra?`) +
-  geom_bar(stat='identity') +    
-  labs (fill = "", caption = paste0("n = ", length(datos$`Marca temporal`)))  +
-  tema +  scale_fill_grey() +
-  coord_polar(theta="y") + theme_void()+
-  geom_text(aes(label= paste0(round(n/sum(n)*100), "%"), 
-                scales::percent(Prozent/100,decimal.mark = ","),
-                position=position_stack(vjust=0.5),color="white",size=6)
+# 
+# gedad <- summary_edad %>% 
+#   ggplot(.) +
+#   aes(x = "", y= n/sum(n)*100, 
+#       fill=  `2.  ¿En qué rango de edad se encuentra?`) +
+#   geom_bar(stat='identity') +    
+#   labs (fill = "", caption = paste0("n = ", length(datos$`Marca temporal`)))  +
+#   tema +  scale_fill_grey() +
+#   coord_polar(theta="y") + theme_void()+
+#   geom_text(aes(label= paste0(round(n/sum(n)*100), "%"), 
+#                 scales::percent(Prozent/100,decimal.mark = ","),
+#                 position=position_stack(vjust=0.5),color="white",size=6)
 
 datos1 %>%
   group_by(`2.  ¿En qué rango de edad se encuentra?`) %>%
@@ -388,11 +388,11 @@ Test Chi² *(observaciones \< 5)*
 
 ```{r}
 # prueba chi
-datos5 %>% 
-  filter(Opinión %in% c("Un problema futuro que requiere solución", 
-                        "Un problema inmediato y urgente a resolver")) %>% 
-  group_by(Opinión) %>% 
-  summarise(test_result = chisq.test(Edad,Tamaño)$p.value)
+# datos5 %>% 
+#   filter(Opinión %in% c("Un problema futuro que requiere solución", 
+#                         "Un problema inmediato y urgente a resolver")) %>% 
+#   group_by(Opinión) %>% 
+#   summarise(test_result = chisq.test(Edad,Tamaño)$p.value)
 
 datos5_chi <- datos5 %>% 
   filter(Opinión %in% c("Un problema futuro que requiere solución")) 
@@ -450,6 +450,15 @@ datos6[35:36] %>%
   filter(value == "Si") %>% 
   group_by(pregunta) %>% 
   summarise("%" = n() / nrow(datos6[35:36]) * 100*5)
+```
+
+
+```{r, fig.height= 6}
+datos6_chi <- datos5 %>% 
+  filter(Opinión %in% c("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx")) 
+
+obs <- xtabs(n ~Edad + Tamaño, datos5_chi)
+chisq.test(datos5$Edad,datos5$Tamaño)$expected
 ```
 
 # 7
@@ -650,6 +659,7 @@ aspectos
 ggsave("aspectos.png", aspectos)
 
 ```
+
 Seprarando en tambos menor y mayor a 200
 
 ```{r}
@@ -682,7 +692,6 @@ asp_tamaño<- datos9c %>%
 
 ggsave("asp-tamaño.png", asp_tamaño, width = 8, units = "in")
 ```
-
 
 Test Chi² *(observaciones \< 5)*
 
