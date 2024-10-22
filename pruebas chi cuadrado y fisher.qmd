@@ -1,0 +1,153 @@
+---
+title: "pruebas chi"
+format: html
+editor: source
+---
+
+Pruebas chi
+
+```{r}
+pacman::p_load(rio, dplyr, ggplot2, stringr, tidyr, tables, car, grid, gridExtra, flextable, tidyverse) 
+
+datos <- import("respuestas2.xlsx") %>% 
+  filter(`1. ¿Cuál es su vínculo con la actividad lechera?` == "Propietario de la empresa") %>% 
+  mutate(`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?` = factor(`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`, levels = c("Menos de 100 vacas en ordeño", "101 a 200", "201 a 300", "Más de 300 vacas en ordeño")))  %>% 
+  mutate( "Opinión" = as.factor(`5. Para Ud., la conservación del medio ambiente es:`),
+          "Edad" = as.factor(`2.  ¿En qué rango de edad se encuentra?` ),
+          "Tamaño" =  as.factor(`4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`)
+          )
+         
+rep_str <- c("Menor a 25 años" = "Menor de 45 años","26 a 45" = "Menor de 45 años")
+datos$`2.  ¿En qué rango de edad se encuentra?` <- str_replace_all(datos$`2.  ¿En qué rango de edad se encuentra?`, rep_str)
+
+datos <- datos %>% 
+  mutate(`2.  ¿En qué rango de edad se encuentra?` = factor(`2.  ¿En qué rango de edad se encuentra?`,
+                                                            levels = c("Menor de 45 años", "46 a 65", "Mayor de 65 años")))
+
+datos1 <- pivot_longer(datos, cols = c(6:36), names_to = "pregunta")
+```
+
+
+```{r}
+datos2 <- datos1 %>% 
+  group_by(pregunta, `2.  ¿En qué rango de edad se encuentra?`, `4. ¿Qué tamaño tiene su tambo, en cantidad de vacas ordeño?`) %>% 
+  count()
+```
+
+```{r}
+datos5 <- pivot_longer(datos, cols = c(6), names_to = "pregunta")  
+
+datos5 %>% 
+  group_by(pregunta, value, Edad, Tamaño) %>% 
+  summarise(n = n(), .groups = "drop") %>% 
+  group_by(value) %>% 
+  summarise(
+    n_niveles_edad = n_distinct(Edad),
+    n_niveles_tamaño = n_distinct(Tamaño),
+    test_result = ifelse(n_niveles_edad > 1 & n_niveles_tamaño > 1, 
+                         ifelse(min(table(Edad, Tamaño)) < 5, 
+                                fisher.test(Edad, Tamaño)$p.value, 
+                                chisq.test(Edad, Tamaño)$p.value), 
+                         NA)
+  )
+
+```
+
+
+```{r}
+datos6 <- pivot_longer(datos, cols = c(7:11), names_to = "pregunta")  
+# prueba chi
+datos6 %>% 
+  group_by(pregunta, value, Edad, Tamaño) %>% 
+  summarise(n = n(), .groups = "drop") %>% 
+  group_by(value) %>% 
+  summarise(
+    n_niveles_edad = n_distinct(Edad),
+    n_niveles_tamaño = n_distinct(Tamaño),
+    test_result = ifelse(n_niveles_edad > 1 & n_niveles_tamaño > 1, 
+                         ifelse(min(table(Edad, Tamaño)) < 5, 
+                                fisher.test(Edad, Tamaño)$p.value, 
+                                chisq.test(Edad, Tamaño)$p.value), 
+                         NA)
+  )
+```
+
+
+```{r}
+datos7 <- pivot_longer(datos, cols = c(12:20), names_to = "pregunta") %>% 
+  mutate(value = factor(value, levels = c("Alto","Medio","Bajo"))) 
+
+# prueba chi
+datos7 %>% 
+  group_by(pregunta, value, Edad, Tamaño) %>% 
+  summarise(n = n(), .groups = "drop") %>% 
+  group_by(value) %>% 
+  summarise(
+    n_niveles_edad = n_distinct(Edad),
+    n_niveles_tamaño = n_distinct(Tamaño),
+    test_result = ifelse(n_niveles_edad > 1 & n_niveles_tamaño > 1, 
+                         ifelse(min(table(Edad, Tamaño)) < 5, 
+                                fisher.test(Edad, Tamaño, workspace = 2e7)$p.value, 
+                                chisq.test(Edad, Tamaño)$p.value), 
+                         NA)
+  )
+```
+
+
+```{r}
+datos8 <- pivot_longer(datos, cols = c(21:25), names_to = "pregunta") %>% 
+  mutate(pregunta = str_remove(pregunta, " situación seleccionada"),
+         "Percepción" = as.factor(value)) %>% 
+  group_by(Percepción) %>% 
+  count() %>% 
+  summarise("%" = round(n/nrow(datos)*100,2))
+
+# prueba chi
+datos7 %>% 
+  group_by(pregunta, value, Edad, Tamaño) %>% 
+  summarise(n = n(), .groups = "drop") %>% 
+  group_by(value) %>% 
+  summarise(
+    n_niveles_edad = n_distinct(Edad),
+    n_niveles_tamaño = n_distinct(Tamaño),
+    test_result = ifelse(n_niveles_edad > 1 & n_niveles_tamaño > 1, 
+                         ifelse(min(table(Edad, Tamaño)) < 5, 
+                                fisher.test(Edad, Tamaño, workspace = 2e7)$p.value, 
+                                chisq.test(Edad, Tamaño)$p.value), 
+                         NA)
+  )
+```
+
+Según su percepción, ¿qué nivel de impacto sobre la sustentabilidad de la actividad lechera le adjudica a las siguientes situaciones
+```{r}
+obs7<- datos7 %>%
+  group_by(pregunta,value, Tamaño) %>% 
+  summarise(n = n(), .groups = "drop")
+
+obs7 <- xtabs(n ~ value + Tamaño, data = obs7)
+
+chisq.test(obs7) 
+```
+
+```{r}
+datos9 <- pivot_longer(datos, cols = c(26:33), names_to = "pregunta") 
+
+# prueba chi
+datos9%>% 
+  group_by(pregunta, value, Edad, Tamaño) %>% 
+  summarise(n = n(), .groups = "drop") %>% 
+  group_by(value) %>% 
+  summarise(
+    n_niveles_edad = n_distinct(Edad),
+    n_niveles_tamaño = n_distinct(Tamaño),
+    test_result = ifelse(n_niveles_edad > 1 & n_niveles_tamaño > 1, 
+                         ifelse(min(table(Edad, Tamaño)) < 5, 
+                                fisher.test(Edad, Tamaño, workspace = 2e7)$p.value, 
+                                chisq.test(Edad, Tamaño)$p.value), 
+                         NA)
+  )
+```
+
+####################
+
+
